@@ -1,0 +1,107 @@
+plugins {
+    id 'java'
+    id 'application'
+    id 'org.javamodularity.moduleplugin' version '1.8.12'
+    id 'org.openjfx.javafxplugin' version '0.0.13'
+    id 'org.beryx.jlink' version '2.25.0'
+    id 'com.github.johnrengelman.shadow' version '8.1.1'
+}
+
+group 'org.example'
+version '1.0-SNAPSHOT'
+
+repositories {
+    mavenCentral()
+}
+
+ext {
+    junitVersion = '5.10.2'
+}
+
+sourceCompatibility = '17'
+targetCompatibility = '17'
+
+tasks.withType(JavaCompile) {
+    options.encoding = 'UTF-8'
+}
+
+application {
+    mainModule = 'org.example'
+    mainClass = 'org.example.Main'
+}
+
+javafx {
+    version = '17.0.13'
+    modules = ['javafx.controls', 'javafx.fxml']
+}
+
+dependencies {
+    // JavaFX
+    implementation 'org.openjfx:javafx-controls:17'
+    implementation 'org.openjfx:javafx-fxml:17'
+
+    // Log4j для логирования
+    implementation 'org.apache.logging.log4j:log4j-api:2.14.1'
+    implementation 'org.apache.logging.log4j:log4j-core:2.14.1'
+
+    // Apache POI для работы с Excel
+    implementation "org.apache.poi:poi:5.2.3"
+    implementation "org.apache.poi:poi-ooxml:5.2.3"
+
+    // Commons (если требуется)
+    implementation "org.apache.commons:commons-collections4:4.4"
+
+    // JUnit для тестов
+    testImplementation("org.junit.jupiter:junit-jupiter-api:${junitVersion}")
+    testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:${junitVersion}")
+}
+
+jlink {
+    imageZip = project.file("${buildDir}/distributions/app-${javafx.platform.classifier}.zip")
+    options = ['--strip-debug', '--compress', '2', '--no-header-files', '--no-man-pages']
+    launcher {
+        name = 'app'
+    }
+}
+
+jlinkZip {
+    group = 'distribution'
+}
+
+run {
+    doFirst {
+        jvmArgs = [
+                '--module-path', '/Users/timofei/javafx-sdk-17.0.13/lib',  // Укажите путь к JavaFX
+                '--add-modules', 'javafx.controls,javafx.fxml'
+        ]
+    }
+}
+
+shadowJar {
+    zip64 true
+    archiveClassifier.set('') // Убирает "all" из имени файла
+    manifest {
+        attributes(
+                'Main-Class': 'org.example.Main' // Укажите класс с методом main
+        )
+    }
+}
+
+// Конфигурация для генерации документации
+javadoc {
+    destinationDir = file("$buildDir/docs/javadoc") // Указываем директорию для документации
+    source = sourceSets.main.allJava // Указываем все исходные файлы проекта
+    options {
+        author = true
+        version = true
+        links "https://docs.oracle.com/en/java/javase/17/docs/api/" // Ссылка на документацию Java
+    }
+}
+
+// Настроить задачу для копирования документации в папку docs после сборки
+task moveJavadoc(type: Copy) {
+    from "$buildDir/docs/javadoc"
+    into "docs"
+}
+
+build.finalizedBy(moveJavadoc)
